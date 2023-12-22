@@ -374,9 +374,6 @@ class Thread {
     }
 
     static void cleanup(void* arg) {
-        // cleanup tls alloctions for openssl.
-        OPENSSL_thread_stop();
-
         volatile RunnableReference* runableref = static_cast<RunnableReference*>(arg);
         ScopedSpinLock lock((const_cast<RunnableReference*>(runableref))->splock);
 

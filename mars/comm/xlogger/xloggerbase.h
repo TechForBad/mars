@@ -20,8 +20,13 @@
 
 #include <stdarg.h>
 #include <stdint.h>
-#include <sys/time.h>
 #include <time.h>
+
+#ifdef WIN32
+#include "mars/comm/windows/sys/time.h"
+#else
+#include <sys/time.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {

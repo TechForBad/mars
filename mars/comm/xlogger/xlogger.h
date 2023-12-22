@@ -21,8 +21,14 @@
 
 #include <assert.h>
 #include <stdlib.h>
+
+#ifdef WIN32
+#include "mars/comm/windows/sys/cdefs.h"
+#include "mars/comm/windows/sys/time.h"
+#else
 #include <sys/cdefs.h>
 #include <sys/time.h>
+#endif
 
 #include "mars/comm/string_cast.h"
 #include "preprocessor.h"
