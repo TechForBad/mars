@@ -1,5 +1,12 @@
 cmake_minimum_required (VERSION 3.6)
 
+# use C++14
+list(APPEND CMAKE_MODULE_PATH
+        ${CMAKE_CURRENT_LIST_DIR}/../../xplatform-ng/cmake
+        )
+include(c++-standards)
+cxx_14()
+
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "Installation directory" FORCE)
 message(STATUS "CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
 
