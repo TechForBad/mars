@@ -13,8 +13,8 @@ SCRIPT_PATH = os.path.split(os.path.realpath(__file__))[0]
 BUILD_OUT_PATH = 'cmake_build/Windows'
 WIN_LIBS_INSTALL_PATH = BUILD_OUT_PATH + "/Windows.out/"
 WIN_RESULT_DIR = WIN_LIBS_INSTALL_PATH + 'win/'
-WIN_BUILD_CMD = 'cmake ../.. -G "Visual Studio 16 2019" -T v142 && cmake --build . --target install --config %s'
-WIN_GEN_PROJECT_CMD = 'cmake ../.. -G "Visual Studio 16 2019" -T v142'
+WIN_BUILD_CMD = 'cmake ../.. -G "Visual Studio 17 2022" -T v143 && cmake --build . --target install --config %s'
+WIN_GEN_PROJECT_CMD = 'cmake ../.. -G "Visual Studio 17 2022" -T v143 -DCMAKE_CONFIGURATION_TYPES="Release;Debug;RelWithDebInfo"'
 SSL_ARCH = 'x86'
 
 def build_windows(incremental:bool, tag='', config:str='', lib_exe_path:str = ""):
@@ -57,7 +57,7 @@ def build_windows(incremental:bool, tag='', config:str='', lib_exe_path:str = ""
     print("use time:%d s" % (int(after_time - before_time)))
     return True
     
-def build_windows_xlog(incremental:bool, tag:str='', config:str='Release', lib_exe_path:str = ""):
+def build_windows_xlog(incremental:bool, tag:str='', config:str='', lib_exe_path:str = ""):
     before_time:float = time.time()
     gen_mars_revision_file('comm', tag)
 
@@ -127,7 +127,7 @@ def gen_win_project(tag=''):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help='''"Release" or "Debug"''')
+    parser.add_argument("--config", type=str, help='''"Release" or "Debug" or "RelWithDebInfo"''')
     parser.add_argument("--incremental", type=bool)
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--xlog", action="store_true")
@@ -136,7 +136,7 @@ def main():
     args = parser.parse_args()
 
     print(args)
-    assert args.config in ["Release", "Debug", None] and args.incremental in [True, False, None]
+    assert args.config in ["Release", "Debug", "RelWithDebInfo", None] and args.incremental in [True, False, None]
     incremental:bool = False
     config:str = "Release"
     if args.config != None:

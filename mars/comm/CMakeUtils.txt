@@ -2,7 +2,7 @@
 message(STATUS "==============config ${PROJECT_NAME}====================")
 
 # just debug;release
-set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
 
 add_definitions(-DXLOGGER_TAG="mars::${PROJECT_NAME}")
 
