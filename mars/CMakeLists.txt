@@ -1,11 +1,16 @@
 cmake_minimum_required (VERSION 3.6)
 
-# use C++14
-list(APPEND CMAKE_MODULE_PATH
-        ${CMAKE_CURRENT_LIST_DIR}/../../xplatform-ng/cmake
-        )
-include(c++-standards)
-cxx_14()
+# force use C++14
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+if(MSVC_VERSION GREATER_EQUAL "1900" AND CMAKE_VERSION LESS 3.10)
+	include(CheckCXXCompilerFlag)
+	check_cxx_compiler_flag("/std:c++14" _cpp_latest_flag_supported)
+	if(_cpp_latest_flag_supported)
+		add_compile_options("/std:c++14")
+	endif()
+endif()
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "Installation directory" FORCE)
 message(STATUS "CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
