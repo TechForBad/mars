@@ -36,6 +36,7 @@ enum TAppenderMode {
 enum TCompressMode {
     kZlib,
     kZstd,
+    kNoZip,
 };
 
 enum TFileIOAction {

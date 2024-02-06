@@ -345,22 +345,21 @@ void XloggerAppender::Open(const XLogConfig& _config) {
     bool use_mmap = false;
     if (OpenMmapFile(mmap_file_path, kBufferBlockLength, mmap_file_)) {
         if (_config.compress_mode_ == kZstd) {
-            log_buff_ = new LogZstdBuffer(mmap_file_.data(),
-                                          kBufferBlockLength,
-                                          true,
-                                          _config.pub_key_.c_str(),
-                                          _config.compress_level_);
-        } else {
+            log_buff_ = new LogZstdBuffer(mmap_file_.data(), kBufferBlockLength, true, _config.pub_key_.c_str(), _config.compress_level_);
+        } else if (_config.compress_mode_ == kZlib) {
             log_buff_ = new LogZlibBuffer(mmap_file_.data(), kBufferBlockLength, true, _config.pub_key_.c_str());
+        } else {
+            log_buff_ = new LogZlibBuffer(mmap_file_.data(), kBufferBlockLength, false, _config.pub_key_.c_str());
         }
         use_mmap = true;
     } else {
         char* buffer = new char[kBufferBlockLength];
         if (_config.compress_mode_ == kZstd) {
-            log_buff_ =
-                new LogZstdBuffer(buffer, kBufferBlockLength, true, _config.pub_key_.c_str(), _config.compress_level_);
-        } else {
+            log_buff_ = new LogZstdBuffer(buffer, kBufferBlockLength, true, _config.pub_key_.c_str(), _config.compress_level_);
+        } else if (_config.compress_mode_ == kZlib) {
             log_buff_ = new LogZlibBuffer(buffer, kBufferBlockLength, true, _config.pub_key_.c_str());
+        } else {
+            log_buff_ = new LogZlibBuffer(buffer, kBufferBlockLength, false, _config.pub_key_.c_str());
         }
         use_mmap = false;
     }
@@ -1219,13 +1218,11 @@ void XloggerAppender::TreatMappingAsFileAndFlush(TFileIOAction* _result) {
 
     // init and set flag
     if (config_.compress_mode_ == kZstd) {
-        log_buff_ = new LogZstdBuffer(data.release(),
-                                      kBufferBlockLength,
-                                      true,
-                                      config_.pub_key_.c_str(),
-                                      config_.compress_level_);
-    } else {
+        log_buff_ = new LogZstdBuffer(data.release(), kBufferBlockLength, true, config_.pub_key_.c_str(), config_.compress_level_);
+    } else if (config_.compress_mode_ == kZlib) {
         log_buff_ = new LogZlibBuffer(data.release(), kBufferBlockLength, true, config_.pub_key_.c_str());
+    } else {
+        log_buff_ = new LogZlibBuffer(data.release(), kBufferBlockLength, false, config_.pub_key_.c_str());
     }
 	
     log_close_ = false;
