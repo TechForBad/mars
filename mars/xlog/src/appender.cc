@@ -77,7 +77,7 @@
 #include "log_zstd_buffer.h"
 #include "xlogger_appender.h"
 
-#define LOG_EXT "xlog"
+#define LOG_EXT __GetLogFileExt()
 
 using namespace mars::comm;
 
@@ -438,6 +438,18 @@ std::string XloggerAppender::__MakeLogFileNamePrefix(const timeval& _tv, const c
     filenameprefix += temp;
 
     return filenameprefix;
+}
+
+std::string XloggerAppender::__GetLogFileExt()
+{
+    if (kNoZip == config_.compress_mode_)
+    {
+        return "log";
+    }
+    else
+    {
+        return "xlog";
+    }
 }
 
 void XloggerAppender::__GetFileNamesByPrefix(const std::string& _logdir,

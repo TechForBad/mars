@@ -40,6 +40,7 @@ class XloggerAppender {
     XloggerAppender(const XLogConfig& _config, uint64_t _max_byte_size, bool _one_shot);
 
     std::string __MakeLogFileNamePrefix(const timeval& _tv, const char* _prefix);
+    std::string __GetLogFileExt();
     void __GetFileNamesByPrefix(const std::string& _logdir,
                                 const std::string& _fileprefix,
                                 const std::string& _fileext,
