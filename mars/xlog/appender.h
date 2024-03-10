@@ -85,11 +85,20 @@ void appender_set_console_log(bool _is_open);
 void appender_set_console_fun(TConsoleFun _fun);
 #endif
 /*
- * By default, all logs will write to one file everyday. You can split logs to multi-file by changing max_file_size.
+ * By default, all logs will write to one file everyday.
+ * You can split logs to multi-file by changing max_file_size.
  *
  * @param _max_byte_size    Max byte size of single log file, default is 0, meaning do not split.
  */
-void appender_set_max_file_size(uint64_t _max_byte_size);
+void appender_set_max_single_file_size(uint64_t _max_byte_size);
+
+/*
+ * By default, there is no upper limit on the total size of the log file.
+ * You can set an upper limit on the total size of all log files by changing max_file_size.
+ *
+ * @param _max_byte_size    Max byte size of all log file, default is 0, meaning do not limit.
+ */
+void appender_set_max_all_file_size(uint64_t _max_byte_size);
 
 /*
  * By default, all logs lives 10 days at most.

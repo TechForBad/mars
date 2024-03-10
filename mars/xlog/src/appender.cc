@@ -132,12 +132,14 @@ static void SetConvertToUseUtf8() {
 }
 #endif
 
-XloggerAppender* XloggerAppender::NewInstance(const XLogConfig& _config, uint64_t _max_byte_size) {
-    return new XloggerAppender(_config, _max_byte_size);
+XloggerAppender* XloggerAppender::NewInstance(
+    const XLogConfig& _config, uint64_t _max_single_byte_size, uint64_t _max_all_byte_size) {
+    return new XloggerAppender(_config, _max_single_byte_size, _max_all_byte_size);
 }
 
-XloggerAppender* XloggerAppender::NewInstance(const XLogConfig& _config, uint64_t _max_byte_size, bool _one_shot) {
-    return new XloggerAppender(_config, _max_byte_size, _one_shot);
+XloggerAppender* XloggerAppender::NewInstance(
+    const XLogConfig& _config, uint64_t _max_single_byte_size, uint64_t _max_all_byte_size, bool _one_shot) {
+    return new XloggerAppender(_config, _max_single_byte_size, _max_all_byte_size, _one_shot);
 }
 
 void XloggerAppender::DelayRelease(XloggerAppender* _appender) {
@@ -154,13 +156,15 @@ void XloggerAppender::Release(XloggerAppender*& _appender) {
     _appender = nullptr;
 }
 
-XloggerAppender::XloggerAppender(const XLogConfig& _config, uint64_t _max_byte_size)
-: thread_async_(boost::bind(&XloggerAppender::__AsyncLogThread, this)), max_file_size_(_max_byte_size) {
+XloggerAppender::XloggerAppender(
+    const XLogConfig& _config, uint64_t _max_single_byte_size, uint64_t _max_all_byte_size)
+: thread_async_(boost::bind(&XloggerAppender::__AsyncLogThread, this)), max_single_file_size_(_max_single_byte_size), max_all_file_size_(_max_all_byte_size) {
     Open(_config);
 }
 
-XloggerAppender::XloggerAppender(const XLogConfig& _config, uint64_t _max_byte_size, bool _one_shot)
-: thread_async_(boost::bind(&XloggerAppender::__AsyncLogThread, this)), max_file_size_(_max_byte_size) {
+XloggerAppender::XloggerAppender(
+    const XLogConfig& _config, uint64_t _max_single_byte_size, uint64_t _max_all_byte_size, bool _one_shot)
+: thread_async_(boost::bind(&XloggerAppender::__AsyncLogThread, this)), max_single_file_size_(_max_single_byte_size), max_all_file_size_(_max_all_byte_size){
     config_ = _config;
 }
 
@@ -530,7 +534,7 @@ long XloggerAppender::__GetNextFileIndex(const std::string& _fileprefix, const s
             filesize += boost::filesystem::file_size(logfilepath);
         }
     }
-    return (filesize > max_file_size_) ? index + 1 : index;
+    return (filesize > max_single_file_size_) ? index + 1 : index;
 }
 
 void XloggerAppender::__MakeLogFileName(const timeval& _tv,
@@ -541,7 +545,7 @@ void XloggerAppender::__MakeLogFileName(const timeval& _tv,
                                         unsigned int _len) {
     long index = 0;
     std::string logfilenameprefix = __MakeLogFileNamePrefix(_tv, _prefix);
-    if (max_file_size_ > 0) {
+    if (max_single_file_size_ > 0) {
         index = __GetNextFileIndex(logfilenameprefix, _fileext);
     }
 
@@ -570,6 +574,8 @@ void XloggerAppender::__DelTimeoutFile(const std::string& _log_path) {
 
     if (boost::filesystem::exists(path) && boost::filesystem::is_directory(path)) {
         boost::filesystem::directory_iterator end_iter;
+
+        // delete timeout file
         for (boost::filesystem::directory_iterator iter(path); iter != end_iter; ++iter) {
             time_t file_modify_time = boost::filesystem::last_write_time(iter->path());
 
@@ -583,6 +589,36 @@ void XloggerAppender::__DelTimeoutFile(const std::string& _log_path) {
                     if (filename.size() == 8 && filename.find_first_not_of("0123456789") == std::string::npos) {
                         boost::filesystem::remove_all(iter->path());
                     }
+                }
+            }
+        }
+
+        // delete more file
+        if (0 != max_all_file_size_ && max_all_file_size_ > max_single_file_size_) {
+            // collect log file and calc all log file size
+            uint64_t all_file_size = 0;
+            std::map<time_t, boost::filesystem::path> log_file_list;
+            for (boost::filesystem::directory_iterator iter(path); iter != end_iter; ++iter) {
+                if (boost::filesystem::is_regular_file(iter->status())
+                    && iter->path().extension() == (std::string(".") + LOG_EXT)) {
+                    time_t file_modify_time = boost::filesystem::last_write_time(iter->path());
+                    uint64_t file_size = boost::filesystem::file_size(iter->path());
+
+                    all_file_size += file_size;
+                    log_file_list[file_modify_time] = iter->path();
+                }
+            }
+
+            // delete until all file size is smaller than upper limit
+            for (const auto& log_file : log_file_list) {
+                boost::filesystem::path file_path = log_file.second;
+                if (!boost::filesystem::exists(file_path)) {
+                    continue;
+                }
+                if (all_file_size > max_all_file_size_) {
+                    uint64_t file_size = boost::filesystem::file_size(file_path);
+                    boost::filesystem::remove(file_path);
+                    all_file_size -= file_size;
                 }
             }
         }
@@ -1130,8 +1166,12 @@ void XloggerAppender::SetConsoleLog(bool _is_open) {
     consolelog_open_ = _is_open;
 }
 
-void XloggerAppender::SetMaxFileSize(uint64_t _max_byte_size) {
-    max_file_size_ = _max_byte_size;
+void XloggerAppender::SetMaxSingleFileSize(uint64_t _max_byte_size) {
+    max_single_file_size_ = _max_byte_size;
+}
+
+void XloggerAppender::SetMaxAllFileSize(uint64_t _max_byte_size) {
+    max_all_file_size_ = _max_byte_size;
 }
 
 void XloggerAppender::SetMaxAliveDuration(long _max_time) {
@@ -1273,7 +1313,8 @@ static XloggerAppender* sg_default_appender = nullptr;
 static bool sg_release_guard = true;
 static bool sg_default_console_log_open = false;
 static Mutex sg_mutex;
-static uint64_t sg_max_byte_size = 0;
+static uint64_t sg_max_single_file_byte_size = 0;
+static uint64_t sg_max_all_file_byte_size = 0;
 static long sg_max_alive_time = 0;
 void xlogger_appender(const XLoggerInfo* _info, const char* _log) {
     if (sg_release_guard) {
@@ -1302,7 +1343,7 @@ void appender_open(const XLogConfig& _config) {
         return;
     }
 
-    sg_default_appender = XloggerAppender::NewInstance(_config, sg_max_byte_size);
+    sg_default_appender = XloggerAppender::NewInstance(_config, sg_max_single_file_byte_size, sg_max_all_file_byte_size);
     sg_default_appender->SetConsoleLog(sg_default_console_log_open);
     if (sg_max_alive_time > 0) {
         sg_default_appender->SetMaxAliveDuration(sg_max_alive_time);
@@ -1366,12 +1407,20 @@ void appender_set_console_log(bool _is_open) {
     sg_default_appender->SetConsoleLog(_is_open);
 }
 
-void appender_set_max_file_size(uint64_t _max_byte_size) {
-    sg_max_byte_size = _max_byte_size;
+void appender_set_max_single_file_size(uint64_t _max_byte_size) {
+    sg_max_single_file_byte_size = _max_byte_size;
     if (sg_release_guard) {
         return;
     }
-    sg_default_appender->SetMaxFileSize(_max_byte_size);
+    sg_default_appender->SetMaxSingleFileSize(_max_byte_size);
+}
+
+void appender_set_max_all_file_size(uint64_t _max_byte_size) {
+    sg_max_all_file_byte_size = _max_byte_size;
+    if (sg_release_guard) {
+        return;
+    }
+    sg_default_appender->SetMaxAllFileSize(_max_byte_size);
 }
 
 void appender_set_max_alive_duration(long _max_time) {
@@ -1397,7 +1446,7 @@ bool appender_make_logfile_name(int _timespan, const char* _prefix, std::vector<
 }
 
 void appender_oneshot_flush(const XLogConfig& _config, TFileIOAction* _result) {
-    auto* scoped_appender = XloggerAppender::NewInstance(_config, sg_max_byte_size, true);
+    auto* scoped_appender = XloggerAppender::NewInstance(_config, sg_max_single_file_byte_size, sg_max_all_file_byte_size, true);
     scoped_appender->TreatMappingAsFileAndFlush(_result);
     scoped_appender->Close();
     XloggerAppender::DelayRelease(scoped_appender);

@@ -58,7 +58,7 @@ void FlushAll(bool _is_sync);
 
 void SetConsoleLogOpen(uintptr_t _instance_ptr, bool _is_open);
 
-void SetMaxFileSize(uintptr_t _instance_ptr, long _max_file_size);
+void SetMaxSingleFileSize(uintptr_t _instance_ptr, long _max_file_size);
 
 void SetMaxAliveTime(uintptr_t _instance_ptr, long _alive_seconds);
 

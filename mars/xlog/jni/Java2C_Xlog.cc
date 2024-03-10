@@ -294,11 +294,11 @@ JNIEXPORT void JNICALL Java_com_tencent_mars_xlog_Xlog_setConsoleLogOpen(JNIEnv*
     mars::xlog::SetConsoleLogOpen(_log_instance_ptr, _is_open);
 }
 
-JNIEXPORT void JNICALL Java_com_tencent_mars_xlog_Xlog_setMaxFileSize(JNIEnv* env,
-                                                                      jobject,
-                                                                      jlong _log_instance_ptr,
-                                                                      jlong _max_size) {
-    mars::xlog::SetMaxFileSize(_log_instance_ptr, _max_size);
+JNIEXPORT void JNICALL Java_com_tencent_mars_xlog_Xlog_setMaxSingleFileSize(JNIEnv* env,
+                                                                            jobject,
+                                                                            jlong _log_instance_ptr,
+                                                                            jlong _max_size) {
+    mars::xlog::SetMaxSingleFileSize(_log_instance_ptr, _max_size);
 }
 
 JNIEXPORT void JNICALL Java_com_tencent_mars_xlog_Xlog_setMaxAliveTime(JNIEnv* env,
