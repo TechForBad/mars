@@ -601,8 +601,8 @@ void XloggerAppender::__DelTimeoutFile(const std::string& _log_path) {
             for (boost::filesystem::directory_iterator iter(path); iter != end_iter; ++iter) {
                 if (boost::filesystem::is_regular_file(iter->status())
                     && iter->path().extension() == (std::string(".") + LOG_EXT)) {
-                    time_t file_modify_time = boost::filesystem::last_write_time(iter->path());
                     uint64_t file_size = boost::filesystem::file_size(iter->path());
+                    time_t file_modify_time = boost::filesystem::last_write_time(iter->path());
 
                     all_file_size += file_size;
                     log_file_list[file_modify_time] = iter->path();
