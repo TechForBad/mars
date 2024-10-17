@@ -119,7 +119,7 @@ DeviceInfo AppManager::GetDeviceInfo() {
 
 #ifdef ANDROID
     empty.devicetype = "ANDROID";
-#elif defined(__WIN32__)
+#elif defined(WIN32)
     empty.devicetype = "WINDOWS";
 #elif defined(__APPLE__)
 #if TARGET_OS_IPHONE
