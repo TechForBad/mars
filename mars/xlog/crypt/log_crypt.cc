@@ -39,6 +39,178 @@
 namespace mars {
 namespace xlog {
 
+#pragma pack(push, 1)
+struct HeaderInfo
+{
+    // char magic_start;
+    char magic_start[2];
+    // uint16_t seq;
+    char seq[4];
+    // char begin_hour;
+    char begin_hour[2];
+    // char end_hour;
+    char end_hour[2];
+    // uint32_t log_len;
+    char log_len[8];
+    // char client_pubkey[64];
+    char client_pubkey[128];
+};
+struct TailerInfo
+{
+    // char magic_end;
+    char magic_end[2];
+};
+#pragma pack(pop)
+
+static char GetHeaderInfoMagicStart(const char* const _data)
+{
+    const HeaderInfo* header_info = reinterpret_cast<const HeaderInfo*>(_data);
+
+    char temp[3];
+    memcpy(temp, header_info->magic_start, sizeof(header_info->magic_start));
+    temp[2] = '\0';
+
+    uint32_t value = 0;
+    sscanf(temp, "%X", &value);
+
+    return (char)value;
+}
+static void SetHeaderInfoMagicStart(char* _data, char magic_start)
+{
+    HeaderInfo* header_info = reinterpret_cast<HeaderInfo*>(_data);
+
+    char temp[3];
+    sprintf(temp, "%02X", magic_start);
+    memcpy(header_info->magic_start, temp, sizeof(header_info->magic_start));
+}
+
+static uint16_t GetHeaderInfoSeq(const char* const _data)
+{
+    const HeaderInfo* header_info = reinterpret_cast<const HeaderInfo*>(_data);
+
+    char temp[5];
+    memcpy(temp, header_info->seq, sizeof(header_info->seq));
+    temp[4] = '\0';
+
+    uint32_t value = 0;
+    sscanf(temp, "%X", &value);
+
+    return (uint16_t)value;
+}
+static void SetHeaderInfoSeq(char* _data, uint16_t seq)
+{
+    HeaderInfo* header_info = reinterpret_cast<HeaderInfo*>(_data);
+
+    char temp[5];
+    sprintf(temp, "%04X", seq);
+    memcpy(header_info->seq, temp, sizeof(header_info->seq));
+}
+
+static char GetHeaderInfoBeginHour(const char* const _data)
+{
+    const HeaderInfo* header_info = reinterpret_cast<const HeaderInfo*>(_data);
+
+    char temp[3];
+    memcpy(temp, header_info->begin_hour, sizeof(header_info->begin_hour));
+    temp[2] = '\0';
+
+    uint32_t value = 0;
+    sscanf(temp, "%X", &value);
+
+    return (char)value;
+}
+static void SetHeaderInfoBeginHour(char* _data, char _begin_hour)
+{
+    HeaderInfo* header_info = reinterpret_cast<HeaderInfo*>(_data);
+
+    char temp[3];
+    sprintf(temp, "%02X", _begin_hour);
+    memcpy(header_info->begin_hour, temp, sizeof(header_info->begin_hour));
+}
+
+static char GetHeaderInfoEndHour(const char* const _data)
+{
+    const HeaderInfo* header_info = reinterpret_cast<const HeaderInfo*>(_data);
+
+    char temp[3];
+    memcpy(temp, header_info->end_hour, sizeof(header_info->end_hour));
+    temp[2] = '\0';
+
+    uint32_t value = 0;
+    sscanf(temp, "%X", &value);
+
+    return (char)value;
+}
+static void SetHeaderInfoEndHour(char* _data, char _end_hour)
+{
+    HeaderInfo* header_info = reinterpret_cast<HeaderInfo*>(_data);
+
+    char temp[3];
+    sprintf(temp, "%02X", _end_hour);
+    memcpy(header_info->end_hour, temp, sizeof(header_info->end_hour));
+}
+
+static uint32_t GetHeaderInfoLogLen(const char* const _data)
+{
+    const HeaderInfo* header_info = reinterpret_cast<const HeaderInfo*>(_data);
+
+    char temp[9];
+    memcpy(temp, header_info->log_len, sizeof(header_info->log_len));
+    temp[8] = '\0';
+
+    uint32_t value = 0;
+    sscanf(temp, "%X", &value);
+
+    return value;
+}
+static void SetHeaderInfoLogLen(char* _data, uint32_t _log_len)
+{
+    HeaderInfo* header_info = reinterpret_cast<HeaderInfo*>(_data);
+
+    char temp[9];
+    sprintf(temp, "%08X", _log_len);
+    memcpy(header_info->log_len, temp, sizeof(header_info->log_len));
+}
+
+static void GetHeaderInfoClientPubKey(const char* const _data, char _client_pubkey[64])
+{
+    const HeaderInfo* header_info = reinterpret_cast<const HeaderInfo*>(_data);
+
+    for (int i = 0; i < 64; ++i)
+    {
+        char temp[3];
+        temp[0] = header_info->client_pubkey[i * 2];
+        temp[1] = header_info->client_pubkey[i * 2 + 1];
+        temp[2] = '\0';
+
+        uint32_t value = 0;
+        sscanf(temp, "%X", &value);
+        _client_pubkey[i] = (char)value;
+    }
+}
+static void SetHeaderInfoClientPubKey(char* _data, char _client_pubkey[64])
+{
+    HeaderInfo* header_info = reinterpret_cast<HeaderInfo*>(_data);
+
+    for (int i = 0; i < 64; ++i)
+    {
+        char temp[3];
+        sprintf(temp, "%02X", _client_pubkey[i]);
+
+        header_info->client_pubkey[i * 2] = temp[0];
+        header_info->client_pubkey[i * 2 + 1] = temp[1];
+    }
+}
+
+static void SetTailerInfoMagicEnd(char* _data, char magic_end)
+{
+    TailerInfo* tailer_info = reinterpret_cast<TailerInfo*>(_data);
+
+    char temp[3];
+    sprintf(temp, "%02X", magic_end);
+    memcpy(tailer_info->magic_end, temp, sizeof(tailer_info->magic_end));
+}
+
 const static int TEA_BLOCK_LEN = 8;
 
 static void __TeaEncrypt(uint32_t* v, uint32_t* k) {
@@ -97,6 +269,7 @@ LogCrypt::LogCrypt(const char* _pubkey) : seq_(0), is_crypt_(false) {
     const static size_t PUB_KEY_LEN = 64;
 
     if (NULL == _pubkey || PUB_KEY_LEN * 2 != strnlen(_pubkey, 256)) {
+        ZeroMemory(client_pubkey_, sizeof(client_pubkey_));
         return;
     }
 
@@ -119,7 +292,6 @@ LogCrypt::LogCrypt(const char* _pubkey) : seq_(0), is_crypt_(false) {
     memcpy(tea_key_, ecdh_key, sizeof(tea_key_));
 
     is_crypt_ = true;
-
 #endif
 }
 
@@ -128,23 +300,23 @@ LogCrypt::LogCrypt(const char* _pubkey) : seq_(0), is_crypt_(false) {
  */
 
 uint32_t LogCrypt::GetHeaderLen() {
-    return sizeof(char) * 3 + sizeof(uint16_t) + sizeof(uint32_t) + sizeof(char) * 64;
+    return sizeof(HeaderInfo);
 }
 
 uint32_t LogCrypt::GetTailerLen() {
-    return sizeof(char);
+    return sizeof(TailerInfo);
 }
 
 bool LogCrypt::GetLogHour(const char* const _data, size_t _len, int& _begin_hour, int& _end_hour) {
     if (_len < GetHeaderLen())
         return false;
 
-    char start = _data[0];
+    char start = GetHeaderInfoMagicStart(_data);
     if (!LogMagicNum::MagicStartIsValid(start))
         return false;
 
-    char begin_hour = _data[sizeof(char) + sizeof(uint16_t)];
-    char end_hour = _data[sizeof(char) + sizeof(uint16_t) + sizeof(char)];
+    char begin_hour = GetHeaderInfoBeginHour(_data);
+    char end_hour = GetHeaderInfoEndHour(_data);
 
     _begin_hour = (int)begin_hour;
     _end_hour = (int)end_hour;
@@ -158,32 +330,31 @@ void LogCrypt::UpdateLogHour(char* _data) {
     struct tm tm_tmp = *localtime((const time_t*)&sec);
 
     char hour = (char)tm_tmp.tm_hour;
-    memcpy(_data + GetHeaderLen() - sizeof(uint32_t) - sizeof(char) * 64 - sizeof(char), &hour, sizeof(hour));
+    SetHeaderInfoEndHour(_data, hour);
 }
 
 uint32_t LogCrypt::GetLogLen(const char* const _data, size_t _len) {
     if (_len < GetHeaderLen())
         return 0;
 
-    char start = _data[0];
+    char start = GetHeaderInfoMagicStart(_data);
     if (!LogMagicNum::MagicStartIsValid(start)) {
         return 0;
     }
 
-    uint32_t len = 0;
-    memcpy(&len, _data + GetHeaderLen() - sizeof(uint32_t) - sizeof(char) * 64, sizeof(len));
+    uint32_t len = GetHeaderInfoLogLen(_data);
     return len;
 }
 
 void LogCrypt::UpdateLogLen(char* _data, uint32_t _add_len) {
     uint32_t currentlen = (uint32_t)(GetLogLen(_data, GetHeaderLen()) + _add_len);
-    memcpy(_data + GetHeaderLen() - sizeof(uint32_t) - sizeof(char) * 64, &currentlen, sizeof(currentlen));
+    SetHeaderInfoLogLen(_data, currentlen);
 }
 
 void LogCrypt::SetHeaderInfo(char* _data, bool _is_async, char _magic_start) {
-    memcpy(_data, &_magic_start, sizeof(_magic_start));
+    SetHeaderInfoMagicStart(_data, _magic_start);
     seq_ = __GetSeq(_is_async);
-    memcpy(_data + sizeof(_magic_start), &seq_, sizeof(seq_));
+    SetHeaderInfoSeq(_data, seq_);
 
     struct timeval tv;
     gettimeofday(&tv, 0);
@@ -191,18 +362,17 @@ void LogCrypt::SetHeaderInfo(char* _data, bool _is_async, char _magic_start) {
     tm tm_tmp = *localtime((const time_t*)&sec);
 
     char hour = (char)tm_tmp.tm_hour;
-    memcpy(_data + sizeof(_magic_start) + sizeof(seq_), &hour, sizeof(hour));
-    memcpy(_data + sizeof(_magic_start) + sizeof(seq_) + sizeof(hour), &hour, sizeof(hour));
+    SetHeaderInfoBeginHour(_data, hour);
+    SetHeaderInfoEndHour(_data, hour);
 
     uint32_t len = 0;
-    memcpy(_data + sizeof(_magic_start) + sizeof(seq_) + sizeof(hour) * 2, &len, sizeof(len));
-    memcpy(_data + sizeof(_magic_start) + sizeof(seq_) + sizeof(hour) * 2 + sizeof(len),
-           client_pubkey_,
-           sizeof(client_pubkey_));
+    SetHeaderInfoLogLen(_data, len);
+
+    SetHeaderInfoClientPubKey(_data, client_pubkey_);
 }
 
 void LogCrypt::SetTailerInfo(char* _data, char _magic_end) {
-    memcpy(_data, &_magic_end, sizeof(_magic_end));
+    SetTailerInfoMagicEnd(_data, _magic_end);
 }
 
 void LogCrypt::CryptSyncLog(const char* const _log_data,
@@ -269,14 +439,14 @@ bool LogCrypt::Fix(char* _data, size_t _data_len, uint32_t& _raw_log_len) {
         return false;
     }
 
-    char start = _data[0];
+    char start = GetHeaderInfoMagicStart(_data);
     if (!LogMagicNum::MagicStartIsValid(start)) {
         return false;
     }
 
     _raw_log_len = GetLogLen(_data, _data_len);
 
-    memcpy(&seq_, _data + 1, sizeof(seq_));
+    seq_ = GetHeaderInfoSeq(_data);
     return true;
 }
 
