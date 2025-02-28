@@ -380,20 +380,9 @@ void LogCrypt::CryptSyncLog(const char* const _log_data,
                             AutoBuffer& _out_buff,
                             char _magic_start,
                             char _magic_end) {
-    _out_buff.AllocWrite(GetHeaderLen() + GetTailerLen() + _input_len);
+    _out_buff.AllocWrite(_input_len);
 
-    SetHeaderInfo((char*)_out_buff.Ptr(), false, _magic_start);
-
-    uint32_t header_len = GetHeaderLen();
-
-    UpdateLogLen((char*)_out_buff.Ptr(), (uint32_t)_input_len);
-
-    SetTailerInfo((char*)_out_buff.Ptr() + _input_len + header_len, _magic_end);
-
-    //  if (!is_crypt_) {
-    memcpy((char*)_out_buff.Ptr() + header_len, _log_data, _input_len);
-    //    return;
-    //}
+    memcpy((char*)_out_buff.Ptr(), _log_data, _input_len);
 
 #ifndef XLOG_NO_CRYPT
     /*   uint32_t tmp[2] = {0};
