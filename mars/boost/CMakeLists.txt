@@ -2,10 +2,11 @@ cmake_minimum_required (VERSION 3.6)
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}" CACHE PATH "Installation directory" FORCE)
 message(STATUS "CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
+add_compile_options(-w) # 屏蔽所有编译警告
 
 project (mars-boost)
 
-include(../comm/CMakeUtils.txt)
+include(../comm/utils.cmake)
 
 include_directories(.)
 include_directories(..)

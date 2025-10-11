@@ -1,16 +1,15 @@
-#include "platform_comm.h"
+#include "mars/comm/platform_comm.h"
 
-#include "xlogger/loginfo_extract.h"
-#include "xlogger/xlogger.h"
+#include "mars/comm/xlogger/loginfo_extract.h"
+#include "mars/comm/xlogger/xlogger.h"
 
 namespace mars {
 namespace comm {
 
 void OnPlatformNetworkChange() {
-
 }
 
-int getNetInfo() {
+int getNetInfo(bool) {
     return kWifi;
 }
 
@@ -26,7 +25,7 @@ bool getCurWifiInfo(WifiInfo& _wifi_info, bool _force_refresh) {
     return false;
 }
 
-bool getCurSIMInfo(SIMInfo& _sim_info) {
+bool getCurSIMInfo(SIMInfo& _sim_info, bool) {
     return false;
 }
 
@@ -39,19 +38,16 @@ unsigned int getSignal(bool isWifi) {
 }
 
 bool isNetworkConnected() {
-    return false;
+    return true;
 }
 
 bool getifaddrs_ipv4_hotspot(std::string& _ifname, std::string& _ifip) {
     return false;
 }
 
-void SetWiFiIdCallBack(std::function<bool(std::string&)> _cb) {}
+}  // namespace comm
 
-void ResetWiFiIdCallBack() {}
-
-} // namespace comm
-
+#ifndef OHOS
 namespace xlog {
 void ConsoleLog(const XLoggerInfo* _info, const char* _log) {
     if (NULL == _info || NULL == _log)
@@ -77,10 +73,9 @@ void ConsoleLog(const XLoggerInfo* _info, const char* _log) {
              strFuncName,
              _info->line,
              _log);
-    printf(log);
+    printf("%s", log);
 }
+}  // namespace xlog
+#endif  // ifndef OHOS
 
-}
-
-} // namespace mars
-
+}  // namespace mars

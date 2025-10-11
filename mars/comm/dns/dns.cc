@@ -20,6 +20,7 @@
 #include "dns/dns.h"
 
 #include "mars/comm/macro.h"
+#include "mars/comm/network/getaddrinfo_with_timeout.h"
 #include "network/getdnssvraddrs.h"
 #include "socket/local_ipstack.h"
 #include "socket/socket_address.h"
@@ -45,11 +46,12 @@ struct dnsinfo {
     thread_tid threadid;
     DNS* dns;
     // DNS::DNSFunc    dns_func;
-    std::function<std::vector<std::string>(const std::string& _host, bool _longlink_host)> dns_func;
+    std::function<std::vector<std::string>(const std::string& _host, bool _longlink_host, const std::map<std::string, std::string>& _extra_info)> dns_func;
     std::string host_name;
     std::vector<std::string> result;
     int status;
     bool longlink_host = false;
+    std::map<std::string, std::string> extra_info;
 };
 /*
  */
@@ -74,9 +76,10 @@ void DNS::__GetIP() {
 
     std::string host_name;
     // DNS::DNSFunc dnsfunc = NULL;
-    std::function<std::vector<std::string>(const std::string& _host, bool _longlink_host)> dnsfunc;
+    std::function<std::vector<std::string>(const std::string& _host, bool _longlink_host, const std::map<std::string, std::string>& _extra_info)> dnsfunc;
     bool longlink_host = false;
     int status = kGetIPDoing;
+    std::map<std::string, std::string> extra_info;
 
     ScopedLock lock(sg_mutex);
     std::vector<dnsinfo>::iterator iter = sg_dnsinfo_vec.begin();
@@ -87,6 +90,7 @@ void DNS::__GetIP() {
             dnsfunc = iter->dns_func;
             longlink_host = iter->longlink_host;
             status = iter->status;
+            extra_info = iter->extra_info;
             break;
         }
     }
@@ -113,10 +117,14 @@ void DNS::__GetIP() {
         //    hints.ai_flags = AI_V4MAPPED|AI_ADDRCONFIG;
         int error = 0;
         TLocalIPStack ipstack = local_ipstack_detect();
+        // when getaddrinfo fail will cost most than 30s
+        bool is_timeout = false;
         if (ELocalIPStack_IPv4 == ipstack) {
-            error = getaddrinfo(host_name.c_str(), NULL, &hints, &result);
+            // error = getaddrinfo(host_name.c_str(), NULL, &hints, &result);
+            error = getaddrinfo_with_timeout(host_name.c_str(), NULL, &hints, &result, is_timeout, 1000);
         } else {
-            error = getaddrinfo(host_name.c_str(), NULL, /*&hints*/ NULL, &result);
+            // error = getaddrinfo(host_name.c_str(), NULL, /*&hints*/ NULL, &result);
+            error = getaddrinfo_with_timeout(host_name.c_str(), NULL, NULL, &result, is_timeout, 1000);
         }
 
         lock.lock();
@@ -129,11 +137,12 @@ void DNS::__GetIP() {
         }
 
         if (error != 0) {
-            xwarn2(TSF "error, error:%_/%_, hostname:%_, ipstack:%_",
+            xwarn2(TSF "error, error:%_/%_, hostname:%_, ipstack:%_ is_timeout:%_",
                    error,
                    strerror(error),
                    host_name.c_str(),
-                   ipstack);
+                   ipstack,
+                   is_timeout);
 
             if (iter != sg_dnsinfo_vec.end())
                 iter->status = kGetIPFail;
@@ -178,13 +187,14 @@ void DNS::__GetIP() {
 
             freeaddrinfo(result);
             iter->status = kGetIPSuc;
-            xinfo2(TSF "cost time: %_", (::gettickcount() - start_time)) >> ip_group;
+            xinfo2(TSF "cost time dns: %_", (::gettickcount() - start_time)) >> ip_group;
             sg_condition.notifyAll();
         }
     } else {
+        auto start_time = ::gettickcount();
         std::vector<std::string> ips;
-        if (status != kGetIPCancel) { // 此时iter可能已经失效了
-            ips = dnsfunc(host_name, longlink_host);
+        if (status != kGetIPCancel) {  // 此时iter可能已经失效了
+            ips = dnsfunc(host_name, longlink_host, extra_info);
         }
 
         lock.lock();
@@ -200,12 +210,14 @@ void DNS::__GetIP() {
             iter->status = ips.empty() ? kGetIPFail : kGetIPSuc;
             iter->result = ips;
         }
+
+        xinfo2(TSF "cost time newdns: %_ host:%_", (::gettickcount() - start_time), host_name);
         sg_condition.notifyAll();
     }
 }
 
 ///////////////////////////////////////////////////////////////////
-DNS::DNS(const std::function<std::vector<std::string>(const std::string& _host, bool _longlink_host)>& _dnsfunc)
+DNS::DNS(const std::function<std::vector<std::string>(const std::string& _host, bool _longlink_host, const std::map<std::string, std::string>& _extra_info)>& _dnsfunc)
 : dnsfunc_(_dnsfunc) {
 }
 
@@ -217,7 +229,8 @@ bool DNS::GetHostByName(const std::string& _host_name,
                         std::vector<std::string>& ips,
                         long millsec,
                         DNSBreaker* _breaker,
-                        bool _longlink_host) {
+                        bool _longlink_host,
+                        const std::map<std::string, std::string>& _extra_info) {
     xverbose_function("host: %s, longlink: %d", _host_name.c_str(), _longlink_host);
 
     xassert2(!_host_name.empty());
@@ -246,6 +259,7 @@ bool DNS::GetHostByName(const std::string& _host_name,
     info.dns = this;
     info.status = kGetIPDoing;
     info.longlink_host = _longlink_host;
+    info.extra_info = _extra_info;
     sg_dnsinfo_vec.push_back(info);
 
     if (_breaker)

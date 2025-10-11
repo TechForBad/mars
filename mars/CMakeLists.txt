@@ -36,7 +36,7 @@ add_subdirectory(zstd/build/cmake/lib zstd)
 
 project (mars)
 
-include(comm/CMakeUtils.txt)
+include(comm/utils.cmake)
 
 include_directories(.)
 include_directories(..)
